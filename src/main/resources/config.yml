@@ -48,6 +48,14 @@ redis:
 #   {stripe_payment_intent_id}    - Stripe payment intent ID (from metadata)
 #   {metadata.<key>}              - Any custom metadata value
 #
+# Arithmetic expressions (supports +, -, *, /, %):
+#   {quantity * 100}              - Multiply quantity by 100
+#   {amount * 2}                  - Double the amount
+#   {quantity + 5}                - Add 5 to quantity
+#   {amount / 2}                  - Divide amount by 2
+#   Examples: "give {player} diamond {quantity * 64}"
+#             "eco give {player} {amount * 100}"
+#
 # Color codes are supported using & (e.g., &a for green, &c for red)
 
 events:
@@ -57,10 +65,12 @@ events:
     # Product: VIP Rank
     VIP:
       - "lp user {player} parent add vip"
-      - "give {player} diamond 10"
+      - "give {player} diamond {quantity * 10}"
+      - "eco give {player} {amount * 100}"
       - "broadcast &a&l[GotCraft] &e{player} &ajust purchased &6VIP Rank&a!"
       - "tell {player} &aThank you for your purchase of &6{product_name}&a!"
       - "tell {player} &7Transaction ID: &f{transaction_id}"
+      - "tell {player} &aYou received &e{amount * 100} &acoins!"
 
     # Product: SUPER_VIP Rank
     SUPER_VIP:
@@ -78,8 +88,9 @@ events:
       - "give {player} iron_pickaxe 1"
       - "give {player} iron_axe 1"
       - "give {player} iron_shovel 1"
-      - "give {player} cooked_beef 32"
+      - "give {player} cooked_beef {quantity * 16}"
       - "tell {player} &aYour &6Starter Kit &ahas been delivered!"
+      - "tell {player} &7You received {quantity * 16} cooked beef!"
 
     # Product: Monthly Crate Key
     MonthlyCrate:

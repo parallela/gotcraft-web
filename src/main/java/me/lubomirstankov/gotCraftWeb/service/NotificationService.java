@@ -112,7 +112,7 @@ public class NotificationService {
 
     /**
      * Replaces placeholders in a command string with values from the payload.
-     * Supports color codes with & symbol.
+     * Supports color codes with & symbol and arithmetic expressions.
      *
      * @param command The command template with placeholders
      * @param payload The payload containing replacement values
@@ -121,11 +121,15 @@ public class NotificationService {
     private String replacePlaceholders(String command, NotificationPayload payload) {
         String result = command;
 
+        // First, handle arithmetic expressions like {quantity * 100} or {amount * 2}
+        result = processArithmeticExpressions(result, payload);
+
         // Replace basic placeholders
         result = result.replace("{player}", safeString(payload.getUsername()));
         result = result.replace("{username}", safeString(payload.getUsername()));
         result = result.replace("{product_name}", safeString(payload.getProductName()));
         result = result.replace("{amount}", safeString(payload.getAmount()));
+        result = result.replace("{quantity}", safeString(payload.getQuantity()));
         result = result.replace("{transaction_id}", safeString(payload.getTransactionId()));
         result = result.replace("{status}", safeString(payload.getStatus()));
         result = result.replace("{purchase_id}", safeString(payload.getPurchaseId()));
@@ -149,6 +153,101 @@ public class NotificationService {
         result = ChatColor.translateAlternateColorCodes('&', result);
 
         return result;
+    }
+
+    /**
+     * Processes arithmetic expressions in placeholders.
+     * Supports operations: +, -, *, /, %
+     * Examples: {quantity * 100}, {amount + 5}, {quantity / 2}
+     *
+     * @param command The command with potential arithmetic expressions
+     * @param payload The payload containing numeric values
+     * @return The command with arithmetic expressions evaluated
+     */
+    private String processArithmeticExpressions(String command, NotificationPayload payload) {
+        String result = command;
+
+        // Pattern to match arithmetic expressions like {quantity * 100} or {amount + 5}
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(
+            "\\{(quantity|amount|purchase_id|user_id)\\s*([+\\-*/%])\\s*([0-9.]+)\\}"
+        );
+
+        java.util.regex.Matcher matcher = pattern.matcher(result);
+        StringBuffer sb = new StringBuffer();
+
+        while (matcher.find()) {
+            String variable = matcher.group(1);
+            String operator = matcher.group(2);
+            String operandStr = matcher.group(3);
+
+            try {
+                // Get the value from payload
+                double value = 0;
+                switch (variable) {
+                    case "quantity":
+                        value = payload.getQuantity() != null ? payload.getQuantity() : 0;
+                        break;
+                    case "amount":
+                        value = payload.getAmount() != null ? payload.getAmount() : 0;
+                        break;
+                    case "purchase_id":
+                        value = payload.getPurchaseId() != null ? payload.getPurchaseId() : 0;
+                        break;
+                    case "user_id":
+                        value = payload.getUserId() != null ? payload.getUserId() : 0;
+                        break;
+                }
+
+                double operand = Double.parseDouble(operandStr);
+                double resultValue = 0;
+
+                // Perform the operation
+                switch (operator) {
+                    case "+":
+                        resultValue = value + operand;
+                        break;
+                    case "-":
+                        resultValue = value - operand;
+                        break;
+                    case "*":
+                        resultValue = value * operand;
+                        break;
+                    case "/":
+                        if (operand != 0) {
+                            resultValue = value / operand;
+                        } else {
+                            logger.warning("Division by zero in expression: " + matcher.group(0));
+                            resultValue = 0;
+                        }
+                        break;
+                    case "%":
+                        if (operand != 0) {
+                            resultValue = value % operand;
+                        } else {
+                            logger.warning("Modulo by zero in expression: " + matcher.group(0));
+                            resultValue = 0;
+                        }
+                        break;
+                }
+
+                // Format result (use integer if it's a whole number)
+                String replacement;
+                if (resultValue == Math.floor(resultValue)) {
+                    replacement = String.valueOf((int) resultValue);
+                } else {
+                    replacement = String.valueOf(resultValue);
+                }
+
+                matcher.appendReplacement(sb, replacement);
+
+            } catch (NumberFormatException e) {
+                logger.warning("Invalid number in arithmetic expression: " + matcher.group(0));
+                matcher.appendReplacement(sb, "0");
+            }
+        }
+
+        matcher.appendTail(sb);
+        return sb.toString();
     }
 
     /**
