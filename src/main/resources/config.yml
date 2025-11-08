@@ -1,0 +1,135 @@
+# ========================================
+# GotCraftWeb Configuration
+# ========================================
+# This plugin listens to Redis pub/sub notifications from your web payment system
+# and executes configured commands when events are received.
+
+# ========================================
+# Redis Configuration
+# ========================================
+redis:
+  # Redis server hostname or IP address
+  host: "localhost"
+
+  # Redis server port
+  port: 6379
+
+  # Redis password (leave empty if no password is required)
+  password: ""
+
+  # Redis channel to subscribe to for notifications
+  channel: "payment:events"
+
+  # Connection timeout in milliseconds
+  timeout: 2000
+
+# ========================================
+# Event Mappings
+# ========================================
+# Configure which commands to run for each event type and product name.
+#
+# Structure:
+# events:
+#   <event_type>:
+#     <product_name>:
+#       - "command 1"
+#       - "command 2"
+#
+# Available placeholders:
+#   {player} or {username}        - Player's username
+#   {product_name}                - Name of the purchased product
+#   {amount}                      - Purchase amount
+#   {quantity}                    - Quantity of items purchased
+#   {transaction_id}              - Payment transaction ID
+#   {purchase_id}                 - Internal purchase ID
+#   {user_id}                     - User's ID
+#   {status}                      - Payment status
+#   {stripe_session_id}           - Stripe session ID (from metadata)
+#   {stripe_payment_intent_id}    - Stripe payment intent ID (from metadata)
+#   {metadata.<key>}              - Any custom metadata value
+#
+# Color codes are supported using & (e.g., &a for green, &c for red)
+
+events:
+  # Event type: payment_success
+  payment_success:
+
+    # Product: VIP Rank
+    VIP:
+      - "lp user {player} parent add vip"
+      - "give {player} diamond 10"
+      - "broadcast &a&l[GotCraft] &e{player} &ajust purchased &6VIP Rank&a!"
+      - "tell {player} &aThank you for your purchase of &6{product_name}&a!"
+      - "tell {player} &7Transaction ID: &f{transaction_id}"
+
+    # Product: SUPER_VIP Rank
+    SUPER_VIP:
+      - "lp user {player} parent add supervip"
+      - "give {player} nether_star 1"
+      - "give {player} diamond 64"
+      - "broadcast &a&l[GotCraft] &e{player} &ais now a &d&lSUPER VIP&a!"
+      - "title {player} title &d&lSUPER VIP"
+      - "title {player} subtitle &aThank you for your support!"
+      - "tell {player} &aYou purchased &d{product_name} &afor &e${amount}"
+
+    # Product: Starter Kit
+    StarterKit:
+      - "give {player} iron_sword 1"
+      - "give {player} iron_pickaxe 1"
+      - "give {player} iron_axe 1"
+      - "give {player} iron_shovel 1"
+      - "give {player} cooked_beef 32"
+      - "tell {player} &aYour &6Starter Kit &ahas been delivered!"
+
+    # Product: Monthly Crate Key
+    MonthlyCrate:
+      - "crate give {player} monthly {quantity}"
+      - "tell {player} &aYou received &e{quantity} &5Monthly Crate Key(s)&a!"
+      - "tell {player} &7Purchase ID: {purchase_id}"
+
+  # Event type: subscription_created
+  subscription_created:
+
+    # Product: Premium Subscription
+    PremiumSubscription:
+      - "lp user {player} parent add premium"
+      - "broadcast &a&l[GotCraft] &e{player} &asubscribed to &6Premium&a!"
+      - "tell {player} &aYour &6Premium Subscription &ais now active!"
+      - "give {player} diamond 5"
+
+  # Event type: refund_processed
+  refund_processed:
+
+    # Product: VIP Rank (remove on refund)
+    VIP:
+      - "lp user {player} parent remove vip"
+      - "tell {player} &cYour VIP rank has been removed due to a refund."
+      - "say &cRefund processed for {player} - VIP rank removed"
+
+    # Product: SUPER_VIP Rank (remove on refund)
+    SUPER_VIP:
+      - "lp user {player} parent remove supervip"
+      - "tell {player} &cYour SUPER VIP rank has been removed due to a refund."
+      - "say &cRefund processed for {player} - SUPER VIP rank removed"
+
+# ========================================
+# Example Payload
+# ========================================
+# Here's an example of the JSON payload expected from Redis:
+#
+# {
+#   "event_type": "payment_success",
+#   "purchase_id": 1234,
+#   "user_id": 5678,
+#   "username": "Steve123",
+#   "product_name": "VIP",
+#   "amount": 19.99,
+#   "quantity": 1,
+#   "status": "completed",
+#   "transaction_id": "pi_123456789",
+#   "metadata": {
+#     "stripe_session_id": "sess_123",
+#     "stripe_payment_intent_id": "pi_987"
+#   }
+# }
+
